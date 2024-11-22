@@ -1,0 +1,34 @@
+{
+    "functions": {
+        "services/calculateCollisions/api/index.py": {
+            "runtime": "python3.9"
+        },
+        "services/getNoradToElaborate/api/index.py": {
+            "runtime": "python3.9"
+        },
+        "services/getTleToMatch/api/index.py": {
+            "runtime": "python3.9"
+        },
+        "services/putAllTleInDbList/api/index.py": {
+            "runtime": "python3.9"
+        }
+    },
+    "routes": [
+        {
+            "src": "/calculateCollisions",
+            "dest": "services/calculateCollisions/api/index.py"
+        },
+        {
+            "src": "/getNoradToElaborate",
+            "dest": "services/getNoradToElaborate/api/index.py"
+        },
+        {
+            "src": "/getTleToMatch",
+            "dest": "services/getTleToMatch/api/index.py"
+        },
+        {
+            "src": "/putAllTleInDbList",
+            "dest": "services/putAllTleInDbList/api/index.py"
+        }
+    ]
+}

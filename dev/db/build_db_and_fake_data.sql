@@ -1,0 +1,62 @@
+CREATE TABLE NORAD_List (
+    id SERIAL PRIMARY KEY,
+    norad_code INTEGER NOT NULL,
+    subscription_level TEXT NOT NULL,
+    priority_level TEXT NOT NULL,
+    timestamp TIMESTAMP
+);
+
+CREATE TABLE TLE (
+    id INTEGER,
+    norad_code INTEGER NOT NULL,
+    tle_line1 TEXT NOT NULL,
+    tle_line2 TEXT NOT NULL,
+    timestamp TIMESTAMP
+);
+
+INSERT INTO NORAD_List (norad_code, subscription_level, priority_level, timestamp)
+VALUES
+(25544, 'Gold', 'High', NOW()),
+(12345, 'Silver', 'Medium', NOW());
+INSERT INTO NORAD_List (norad_code, subscription_level, priority_level, timestamp)
+VALUES
+(25544, 'Gold', 'High', NOW());
+
+INSERT INTO NORAD_List (norad_code, subscription_level, priority_level, timestamp)
+VALUES
+(12345, 'Silver', 'Medium', NOW());
+
+INSERT INTO NORAD_List (norad_code, subscription_level, priority_level, timestamp)
+VALUES
+(67890, 'Bronze', 'Low', NOW());
+
+
+INSERT INTO TLE (norad_code, tle_line1, tle_line2, timestamp)
+VALUES (10001, '1 10001U 22067A   23269.63541667  .00016717  00000-0  10270-3 0  9991', '2 10001  51.6457 200.5350 0007913  32.3308  50.0150 15.50048536396073', NOW());
+
+INSERT INTO TLE (norad_code, tle_line1, tle_line2, timestamp)
+VALUES (10002, '1 10002U 22067A   23269.63541667  .00016717  00000-0  10270-3 0  9992', '2 10002  51.6457 200.5350 0007913  32.3308  50.0150 15.50048536396073', NOW());
+
+INSERT INTO TLE (norad_code, tle_line1, tle_line2, timestamp)
+VALUES (10003, '1 10003U 22067A   23269.63541667  .00016717  00000-0  10270-3 0  9993', '2 10003  51.6457 200.5350 0007913  32.3308  50.0150 15.50048536396073', NOW());
+
+INSERT INTO TLE (norad_code, tle_line1, tle_line2, timestamp)
+VALUES (10004, '1 10004U 22067A   23269.63541667  .00016717  00000-0  10270-3 0  9994', '2 10004  51.6457 200.5350 0007913  32.3308  50.0150 15.50048536396073', NOW());
+
+INSERT INTO TLE (norad_code, tle_line1, tle_line2, timestamp)
+VALUES (10005, '1 10005U 22067A   23269.63541667  .00016717  00000-0  10270-3 0  9995', '2 10005  51.6457 200.5350 0007913  32.3308  50.0150 15.50048536396073', NOW());
+
+INSERT INTO TLE (norad_code, tle_line1, tle_line2, timestamp)
+VALUES (10006, '1 10006U 22067A   23269.63541667  .00016717  00000-0  10270-3 0  9996', '2 10006  51.6457 200.5350 0007913  32.3308  50.0150 15.50048536396073', NOW());
+
+INSERT INTO TLE (norad_code, tle_line1, tle_line2, timestamp)
+VALUES (10007, '1 10007U 22067A   23269.63541667  .00016717  00000-0  10270-3 0  9997', '2 10007  51.6457 200.5350 0007913  32.3308  50.0150 15.50048536396073', NOW());
+
+INSERT INTO TLE (norad_code, tle_line1, tle_line2, timestamp)
+VALUES (10008, '1 10008U 22067A   23269.63541667  .00016717  00000-0  10270-3 0  9998', '2 10008  51.6457 200.5350 0007913  32.3308  50.0150 15.50048536396073', NOW());
+
+INSERT INTO TLE (norad_code, tle_line1, tle_line2, timestamp)
+VALUES (10009, '1 10009U 22067A   23269.63541667  .00016717  00000-0  10270-3 0  9999', '2 10009  51.6457 200.5350 0007913  32.3308  50.0150 15.50048536396073', NOW());
+
+INSERT INTO TLE (norad_code, tle_line1, tle_line2, timestamp)
+VALUES (10010, '1 10010U 22067A   23269.63541667  .00016717  00000-0  10270-3 0  99910', '2 10010  51.6457 200.5350 0007913  32.3308  50.0150 15.50048536396073', NOW());
