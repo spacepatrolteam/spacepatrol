@@ -1,4 +1,4 @@
-from flask import request, jsonify
+from Flask import request, jsonify
 
 def handler(event, context):
     # Controlla che la richiesta sia JSON

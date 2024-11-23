@@ -1,4 +1,4 @@
-from flask import jsonify
+from Flask import jsonify
 
 def handler(event, context):
     # Simula il calcolo delle collisioni
