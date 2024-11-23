@@ -3,7 +3,7 @@ from flask import Flask, jsonify
 app = Flask(__name__)
 
 @app.route("/get_norad_to_elaborate")
-def handler():
+def get_norad_to_elaborate():
     # Simula il calcolo delle collisioni
     data = {
         "status": "success",
@@ -16,7 +16,7 @@ def handler():
     return jsonify(data)
 
 @app.route("/calculate_collisions")
-def handler():
+def calculate_collisions():
         # Simulazione di recupero di NORAD code
     data = {
         "status": "success",
@@ -28,7 +28,7 @@ def handler():
     return jsonify(data)
 
 @app.route("/get_tle_to_match")
-def handler():
+def get_tle_to_match():
         # Simula il recupero di TLE per un NORAD code
     data = {
         "status": "success",
@@ -53,7 +53,7 @@ def handler():
     return jsonify(data)
 
 @app.route("/put_all_tle_in_db_list", methods=["PUT"])
-def handler():
+def put_all_tle_in_db_list():
         # Controlla che la richiesta sia JSON
     if not request.is_json:
         return jsonify({"error": "Unsupported Media Type. Content-Type must be application/json"}), 415
@@ -62,7 +62,7 @@ def handler():
     return jsonify({"status": "success", "message": "TLE data saved to database", "data": input_data})
 
 @app.route("/put_norad_code_to_db_list", methods=["PUT"])
-def handler():
+def put_norad_code_to_db_list():
         # Controlla che la richiesta abbia un Content-Type JSON
     if not request.is_json:
         return jsonify({"error": "Unsupported Media Type. Content-Type must be application/json"}), 415
