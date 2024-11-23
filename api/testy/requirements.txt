@@ -1,2 +1,0 @@
-# Using the built-in http.server library from Python standard library.
-# Ensure the runtime is compatible, e.g., Python >= 3.x
