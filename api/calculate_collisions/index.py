@@ -1,6 +1,9 @@
-from Flask import jsonify
+from flask import Flask, jsonify
 
-def handler(event, context):
+app = Flask(__name__)
+
+@app.route("/", methods=["GET"])
+def handler():
     # Simula il calcolo delle collisioni
     data = {
         "status": "success",
