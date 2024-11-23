@@ -1,4 +1,0 @@
-{
-    "runtime": "vercel-python@3.9",
-    "entrypoint": "index.py"
-}
