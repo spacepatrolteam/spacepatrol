@@ -9,8 +9,8 @@ API_URL_PUT_TLE_IN_DB = "https://spacepatrol.vercel.app/put_all_tle_in_db_list"
 API_URL_PUT_NORAD_IN_DB = "https://spacepatrol.vercel.app/put_norad_code_to_db_list"
 
 # CRON
-@app.route('/calc_match', methods=['GET'])
-def match():
+@app.route("/calc_match")
+def calc_match():
     try:
         # Step 1: Recupera il codice NORAD da elaborare
         norad_response = requests.get(API_URL_GET_NORAD)
