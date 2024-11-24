@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request
 import requests
+import psycopg2
 
 app = Flask(__name__)
 
@@ -9,6 +10,23 @@ API_URL_GET_TLE_TO_MATCH = "https://spacepatrol.vercel.app/get_tle_to_match"
 API_URL_PUT_TLE_IN_DB = "https://spacepatrol.vercel.app/put_all_tle_in_db_list"
 API_URL_PUT_NORAD_IN_DB = "https://spacepatrol.vercel.app/put_norad_code_to_db_list"
 
+DB_CONFIG = {
+    "dbname": "neondb",
+    "user": "neondb_owner",
+    "password": "VZ2Uu0WbzTkv",
+    "host": "ep-muddy-morning-a2lz0d1y-pooler.eu-central-1.aws.neon.tech",
+    "port": 5432,
+    "options": "-c endpoint=ep-muddy-morning-a2lz0d1y"
+}
+
+def get_db_connection():
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        return conn
+    except Exception as e:
+        print("Errore nella connessione al database:", e)
+        return None
+    
 # CRON
 @app.route("/calc_match")
 def calc_match():
@@ -90,14 +108,41 @@ def get_tle_to_match():
     return jsonify(data)
 
 # CRON
-@app.route("/put_all_tle_in_db_list", methods=["PUT"])
-def put_all_tle_in_db_list():
-        # Controlla che la richiesta sia JSON
-    if not request.is_json:
-        return jsonify({"error": "Unsupported Media Type. Content-Type must be application/json"}), 415
+@app.route("/update_web_tle_in_db", methods=["PUT"])
+def update_web_tle_in_db():
+    # Chiamata interna all'API fake_web_tle_source_api
+    with app.test_client() as client:
+        response = client.get("/fake_web_tle_source_api")
+        if response.status_code != 200:
+            return jsonify({"error": "Failed to fetch TLE data"}), 500
+        
+        tle_data = response.json
 
-    input_data = request.json
-    return jsonify({"status": "success", "message": "TLE data saved to database", "data": input_data})
+    # Connessione al database Neon
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    try:
+        cursor = conn.cursor()
+        for tle in tle_data:
+            query = """
+                INSERT INTO neon_tle (norad_code, tle_line1, tle_line2, timestamp)
+                VALUES (%s, %s, %s, NOW())
+            """
+            # Sostituisci "12345" con il valore appropriato per norad_code se disponibile
+            cursor.execute(query, (12345, tle["tle_line1"], tle["tle_line2"]))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({"status": "success", "message": "TLE data saved to database", "data": tle_data})
+
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return jsonify({"error": f"Failed to save data: {str(e)}"}), 500
 
 @app.route("/put_norad_code_to_db_list", methods=["PUT"])
 def put_norad_code_to_db_list():
@@ -108,4 +153,20 @@ def put_norad_code_to_db_list():
     input_data = request.json
     response = {"status": "success", "message": "NORAD codes saved to database"}
     return jsonify(response)
+
+@app.route("/fake_web_tle_source_api", methods=["GET"])
+def fake_web_tle_source_api():
+    data = [
+        {
+            "norad_code": "Satellite-FAKE_1",
+            "tle_line1": "1 16749U 2216Q   23094.84432363  .99430934 67072-0  22659-3 0  9278",
+            "tle_line2": "2 22227  95.8910 299.5581 0.3805685 341.1076 45.0676 13.639897775478"
+        },
+        {
+            "norad_code": "Satellite-FAKE_2",
+            "tle_line1": "1 16749U 2216Q   23094.84432363  .99430934 67072-0  22659-3 0  9278",
+            "tle_line2": "2 22227  95.8910 299.5581 0.3805685 341.1076 45.0676 13.639897775478"
+        }
+    ]
+    return jsonify(data)
 
