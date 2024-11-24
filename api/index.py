@@ -1,27 +1,27 @@
 from flask import Flask, jsonify, request
 import requests
 import psycopg2
+import os
+from dotenv import load_dotenv
 
 app = Flask(__name__)
 
-API_URL_GET_NORAD = "https://spacepatrol.vercel.app/get_norad_to_elaborate"
-API_URL_GET_TLE_TO_MATCH = "https://spacepatrol.vercel.app/get_tle_to_match"
+# load_dotenv()
 
-API_URL_PUT_TLE_IN_DB = "https://spacepatrol.vercel.app/put_all_tle_in_db_list"
-API_URL_PUT_NORAD_IN_DB = "https://spacepatrol.vercel.app/put_norad_code_to_db_list"
+DATABASE_URL = os.getenv("DATABASE_URL")
+API_URL_GET_NORAD = os.getenv("API_URL_GET_NORAD")
+API_URL_GET_TLE_TO_MATCH = os.getenv("API_URL_GET_TLE_TO_MATCH")
+API_URL_PUT_TLE_IN_DB = os.getenv("API_URL_PUT_TLE_IN_DB")
+API_URL_PUT_NORAD_IN_DB = os.getenv("API_URL_PUT_NORAD_IN_DB")
 
-DB_CONFIG = {
-    "dbname": "neondb",
-    "user": "neondb_owner",
-    "password": "VZ2Uu0WbzTkv",
-    "host": "ep-muddy-morning-a2lz0d1y-pooler.eu-central-1.aws.neon.tech",
-    "port": 5432,
-    "options": "-c endpoint=ep-muddy-morning-a2lz0d1y"
-}
+# API_URL_GET_NORAD = "https://spacepatrol.vercel.app/get_norad_to_elaborate"
+# API_URL_GET_TLE_TO_MATCH = "https://spacepatrol.vercel.app/get_tle_to_match"
+# API_URL_PUT_TLE_IN_DB = "https://spacepatrol.vercel.app/put_all_tle_in_db_list"
+# API_URL_PUT_NORAD_IN_DB = "https://spacepatrol.vercel.app/put_norad_code_to_db_list"
 
 def get_db_connection():
     try:
-        conn = psycopg2.connect(**DB_CONFIG)
+        conn = psycopg2.connect(DATABASE_URL)
         return conn
     except Exception as e:
         print("Errore nella connessione al database:", e)
@@ -35,7 +35,7 @@ def calc_match():
         norad_response = requests.get(API_URL_GET_NORAD)
         if norad_response.status_code != 200:
             return jsonify({"status": "error", "message": "Error retrieving NORAD code"}), 500
-        
+
         norad_code = norad_response.json().get("norad_code")
         if not norad_code:
             return jsonify({"status": "error", "message": "No NORAD code received"}), 500
@@ -44,7 +44,7 @@ def calc_match():
         tle_response = requests.get(API_URL_GET_TLE_TO_MATCH, params={"norad_code": norad_code})
         if tle_response.status_code != 200:
             return jsonify({"status": "error", "message": "Error retrieving TLE data"}), 500
-        
+
         tle_data = tle_response.json()
         if not tle_data.get("norad_tle"):
             return jsonify({"status": "error", "message": "No TLE data received"}), 500
@@ -53,7 +53,6 @@ def calc_match():
         related_tles = tle_data.get("related_tles")
 
         # Step 3: Calcola il match
-        # Simulazione del calcolo del match (intersezioni entro 10 ore)
         matches = []
         for tle in related_tles:
             matches.append(f"Intersection calculated between {norad_tle} and {tle}")
@@ -130,8 +129,7 @@ def update_web_tle_in_db():
                 INSERT INTO neon_tle (norad_code, tle_line1, tle_line2, timestamp)
                 VALUES (%s, %s, %s, NOW())
             """
-            # Sostituisci "12345" con il valore appropriato per norad_code se disponibile
-            cursor.execute(query, (12345, tle["tle_line1"], tle["tle_line2"]))
+            cursor.execute(query, (tle["norad_code"], tle["tle_line1"], tle["tle_line2"]))
 
         conn.commit()
         cursor.close()
@@ -143,16 +141,6 @@ def update_web_tle_in_db():
         conn.rollback()
         conn.close()
         return jsonify({"error": f"Failed to save data: {str(e)}"}), 500
-
-@app.route("/put_norad_code_to_db_list", methods=["PUT"])
-def put_norad_code_to_db_list():
-        # Controlla che la richiesta abbia un Content-Type JSON
-    if not request.is_json:
-        return jsonify({"error": "Unsupported Media Type. Content-Type must be application/json"}), 415
-
-    input_data = request.json
-    response = {"status": "success", "message": "NORAD codes saved to database"}
-    return jsonify(response)
 
 @app.route("/fake_web_tle_source_api", methods=["GET"])
 def fake_web_tle_source_api():
@@ -169,4 +157,14 @@ def fake_web_tle_source_api():
         }
     ]
     return jsonify(data)
+
+@app.route("/put_norad_code_to_db_list", methods=["PUT"])
+def put_norad_code_to_db_list():
+        # Controlla che la richiesta abbia un Content-Type JSON
+    if not request.is_json:
+        return jsonify({"error": "Unsupported Media Type. Content-Type must be application/json"}), 415
+
+    input_data = request.json
+    response = {"status": "success", "message": "NORAD codes saved to database"}
+    return jsonify(response)
 
