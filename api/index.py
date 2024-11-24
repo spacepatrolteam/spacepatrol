@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 import requests
 
 app = Flask(__name__)
@@ -93,19 +93,19 @@ def get_tle_to_match():
 @app.route("/put_all_tle_in_db_list", methods=["PUT"])
 def put_all_tle_in_db_list():
         # Controlla che la richiesta sia JSON
-    if not requests.is_json:
+    if not request.is_json:
         return jsonify({"error": "Unsupported Media Type. Content-Type must be application/json"}), 415
 
-    input_data = requests.json
+    input_data = request.json
     return jsonify({"status": "success", "message": "TLE data saved to database", "data": input_data})
 
 @app.route("/put_norad_code_to_db_list", methods=["PUT"])
 def put_norad_code_to_db_list():
         # Controlla che la richiesta abbia un Content-Type JSON
-    if not requests.is_json:
+    if not request.is_json:
         return jsonify({"error": "Unsupported Media Type. Content-Type must be application/json"}), 415
 
-    input_data = requests.json
+    input_data = request.json
     response = {"status": "success", "message": "NORAD codes saved to database"}
     return jsonify(response)
 
