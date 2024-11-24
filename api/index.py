@@ -125,7 +125,7 @@ def update_web_tle_in_db():
         cursor = conn.cursor()
         for tle in tle_data:
             query = """
-                INSERT INTO neon_tle (norad_code, tle_line1, tle_line2, timestamp)
+                INSERT INTO neon_tle_list (norad_code, tle_line1, tle_line2, timestamp)
                 VALUES (%s, %s, %s, NOW())
             """
             cursor.execute(query, (tle["norad_code"], tle["tle_line1"], tle["tle_line2"]))
