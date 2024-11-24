@@ -2,7 +2,6 @@ from flask import Flask, jsonify, request
 import requests
 import psycopg2
 import os
-from dotenv import load_dotenv
 
 app = Flask(__name__)
 
