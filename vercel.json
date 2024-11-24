@@ -5,7 +5,7 @@
             "destination": "/api/index"
         }
     ],
-    "cron": [
+    "crons": [
         {
           "path": "/calc_match",
           "schedule": "*/5 * * * *"
