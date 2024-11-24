@@ -4,5 +4,15 @@
             "source": "/(.*)",
             "destination": "/api/index"
         }
+    ],
+    "cron": [
+        {
+          "path": "/calc_match",
+          "schedule": "*/5 * * * *"
+        },
+        {
+          "path": "/put_all_tle_in_db_list",
+          "schedule": "*/10 * * * *"
+        }
     ]
 }
