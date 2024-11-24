@@ -13,7 +13,7 @@ API_URL_PUT_NORAD_IN_DB = "https://spacepatrol.vercel.app/put_norad_code_to_db_l
 def calc_match():
     try:
         # Step 1: Recupera il codice NORAD da elaborare
-        norad_response = requests.get(API_URL_GET_NORAD)
+        norad_response = request.get(API_URL_GET_NORAD)
         if norad_response.status_code != 200:
             return jsonify({"status": "error", "message": "Error retrieving NORAD code"}), 500
         
@@ -22,7 +22,7 @@ def calc_match():
             return jsonify({"status": "error", "message": "No NORAD code received"}), 500
 
         # Step 2: Recupera i TLE per il NORAD e per altri oggetti correlati
-        tle_response = requests.get(API_URL_GET_TLE_TO_MATCH, params={"norad_code": norad_code})
+        tle_response = request.get(API_URL_GET_TLE_TO_MATCH, params={"norad_code": norad_code})
         if tle_response.status_code != 200:
             return jsonify({"status": "error", "message": "Error retrieving TLE data"}), 500
         
