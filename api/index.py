@@ -1,4 +1,5 @@
 from flask import Flask, jsonify
+import requests
 
 app = Flask(__name__)
 
@@ -13,7 +14,7 @@ API_URL_PUT_NORAD_IN_DB = "https://spacepatrol.vercel.app/put_norad_code_to_db_l
 def calc_match():
     try:
         # Step 1: Recupera il codice NORAD da elaborare
-        norad_response = request.get(API_URL_GET_NORAD)
+        norad_response = requests.get(API_URL_GET_NORAD)
         if norad_response.status_code != 200:
             return jsonify({"status": "error", "message": "Error retrieving NORAD code"}), 500
         
@@ -22,7 +23,7 @@ def calc_match():
             return jsonify({"status": "error", "message": "No NORAD code received"}), 500
 
         # Step 2: Recupera i TLE per il NORAD e per altri oggetti correlati
-        tle_response = request.get(API_URL_GET_TLE_TO_MATCH, params={"norad_code": norad_code})
+        tle_response = requests.get(API_URL_GET_TLE_TO_MATCH, params={"norad_code": norad_code})
         if tle_response.status_code != 200:
             return jsonify({"status": "error", "message": "Error retrieving TLE data"}), 500
         
@@ -92,19 +93,19 @@ def get_tle_to_match():
 @app.route("/put_all_tle_in_db_list", methods=["PUT"])
 def put_all_tle_in_db_list():
         # Controlla che la richiesta sia JSON
-    if not request.is_json:
+    if not requests.is_json:
         return jsonify({"error": "Unsupported Media Type. Content-Type must be application/json"}), 415
 
-    input_data = request.json
+    input_data = requests.json
     return jsonify({"status": "success", "message": "TLE data saved to database", "data": input_data})
 
 @app.route("/put_norad_code_to_db_list", methods=["PUT"])
 def put_norad_code_to_db_list():
         # Controlla che la richiesta abbia un Content-Type JSON
-    if not request.is_json:
+    if not requests.is_json:
         return jsonify({"error": "Unsupported Media Type. Content-Type must be application/json"}), 415
 
-    input_data = request.json
+    input_data = requests.json
     response = {"status": "success", "message": "NORAD codes saved to database"}
     return jsonify(response)
 
