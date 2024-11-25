@@ -63,11 +63,26 @@ def calc_match():
 
         try:
             cursor = conn.cursor()
-            insert_query = """
+
+            # Elimina tutti i record dalla tabella neon_match_actual
+            delete_query = "DELETE FROM neon_match_actual"
+            cursor.execute(delete_query)
+
+            # Inserisci i dati nella tabella neon_match_actual
+            insert_query_actual = """
+                INSERT INTO neon_match_actual (norad_code, tle_line1, tle_line2)
+                VALUES (%s, %s, %s)
+            """
+            cursor.execute(insert_query_actual, ("2334255334", "1 20580U 90037B   23269.63541667  .00000473  00000-0  36089-4 0  9995", "2 25544  51.6457 200.5350 0007913  32.3308  50.0150 15.50048536396073"))
+
+            # Inserisci i dati nella tabella neon_match_history
+            insert_query_history = """
                 INSERT INTO neon_match_history (norad_code, tle_line1, tle_line2)
                 VALUES (%s, %s, %s)
             """
-            cursor.execute(insert_query, ("2334255334", "1 20580U 90037B   23269.63541667  .00000473  00000-0  36089-4 0  9995", "2 25544  51.6457 200.5350 0007913  32.3308  50.0150 15.50048536396073"))
+            cursor.execute(insert_query_history, ("2334255334", "1 20580U 90037B   23269.63541667  .00000473  00000-0  36089-4 0  9995", "2 25544  51.6457 200.5350 0007913  32.3308  50.0150 15.50048536396073"))
+
+            # Commit dei cambiamenti
             conn.commit()
             cursor.close()
             conn.close()
