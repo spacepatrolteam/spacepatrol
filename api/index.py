@@ -86,7 +86,14 @@ def calc_match():
 @app.route("/get_norad_to_elaborate")
 def get_norad_to_elaborate():
     # Simula il calcolo delle collisioni
-    data = {"25544"}
+    data = {
+        "status": "success",
+        "norad_code": "25544",
+        "matches": [
+            "Intersection calculated between ISS (ZARYA) and NOAA 19",
+            "Intersection calculated between ISS (ZARYA) and Hubble Space Telescope"
+        ]
+    }
     return jsonify(data)
 
 @app.route("/get_tle_to_match")
