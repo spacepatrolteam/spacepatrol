@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clean Cesium Viewer</title>
+    <style>
+        #cesiumContainer {
+            width: 100%;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        /* Riduci al minimo l'interfaccia Cesium senza nascondere elementi essenziali */
+        .cesium-viewer-toolbar,
+        .cesium-viewer-animationContainer,
+        .cesium-viewer-timelineContainer {
+            display: none !important;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100vh;
+        }
+        body {
+            margin: 0rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="cesiumContainer"></div>
+    <script src="https://cdn.jsdelivr.net/npm/cesium@latest/Build/Cesium/Cesium.js"></script>
+    <script>
+        // Aggiungi il tuo token Cesium Ion qui
+        Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJmZTg3NjU4OS1mZWEzLTQ1ZWQtYmQ1NS0wNDY1MTY5OWQwMDkiLCJpZCI6MjU4MDg5LCJpYXQiOjE3MzI2NTQ4NzN9.xvhPXH_NlFAvT2HbcJBh58tP3_t6bEs0-hNnJrvvpQ4'; // Inserisci il token corretto
+
+        // Configura il visualizzatore Cesium con interfaccia minimale
+        const viewer = new Cesium.Viewer('cesiumContainer', {
+            animation: false,
+            timeline: false,
+            fullscreenButton: false,
+            sceneModePicker: false,
+            baseLayerPicker: false,
+            navigationHelpButton: false,
+            homeButton: false,
+            geocoder: false,
+            infoBox: false,
+            selectionIndicator: false
+        });
+
+        // Zoom sulla Terra iniziale
+        viewer.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(-100.0, 40.0, 20000000.0) // Nord America
+        });
+
+        // Dati CZML aggiornati
+        const czml = [
+            {
+                "id": "document",
+                "name": "Intersection at X",
+                "version": "1.0",
+                "clock": {
+                    "interval": "2024-11-25T00:00:00Z/2024-11-25T02:00:00Z",
+                    "currentTime": "2024-11-25T00:00:00Z",
+                    "multiplier": 1,
+                    "range": "CLAMPED"
+                }
+            },
+            {
+                "id": "line1",
+                "name": "Red Line",
+                "availability": "2024-11-25T00:00:00Z/2024-11-25T02:00:00Z",
+                "path": {
+                    "material": {
+                        "solidColor": {
+                            "color": {"rgba": [255, 0, 0, 255]} // Rosso
+                        }
+                    },
+                    "width": 5
+                },
+                "position": {
+                    "epoch": "2024-11-25T00:00:00Z",
+                    "cartesian": [
+                        -3600, 6600000, -2000000, 0,
+                        -1800, 6800000, -1000000, 0,
+                        0, 7000000, 0, 0,
+                        1800, 7200000, 1000000, 0,
+                        3600, 7400000, 2000000, 0
+                    ]
+                }
+            },
+            {
+                "id": "line2",
+                "name": "Blue Line",
+                "availability": "2024-11-25T00:00:00Z/2024-11-25T02:00:00Z",
+                "path": {
+                    "material": {
+                        "solidColor": {
+                            "color": {"rgba": [0, 0, 255, 255]} // Blu
+                        }
+                    },
+                    "width": 5
+                },
+                "position": {
+                    "epoch": "2024-11-25T00:00:00Z",
+                    "cartesian": [
+                        -3600, 7400000, 2000000, 0,
+                        -1800, 7200000, 1000000, 0,
+                        0, 7000000, 0, 0,
+                        1800, 6800000, -1000000, 0,
+                        3600, 6600000, -2000000, 0
+                    ]
+                }
+            }
+        ];
+
+        // Carica i dati CZML e aggiungili al viewer
+        Cesium.CzmlDataSource.load(czml).then((dataSource) => {
+            viewer.dataSources.add(dataSource);
+            viewer.zoomTo(dataSource); // Zoom automatico sulle traiettorie
+        });
+    </script>
+</body>
+</html>
