@@ -244,8 +244,6 @@ def real_space_track_data_wip():
             response.raise_for_status()
 
     if __name__ == "__main__":
-        email = "netxdata.it@gmail.com"
-        password = "NetxData2024!2024"
         query = "/basicspacedata/query/class/gp/decay_date/null-val/epoch/>now-30/orderby/norad_cat_id/format/json/object_type/debris"
         
         try:
