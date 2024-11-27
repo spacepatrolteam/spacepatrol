@@ -8,10 +8,15 @@ app = Flask(__name__)
 # load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+USR = os.getenv("USR")
+PWD = os.getenv("PWD")
+
 API_URL_GET_NORAD = os.getenv("API_URL_GET_NORAD")
 API_URL_GET_TLE_TO_MATCH = os.getenv("API_URL_GET_TLE_TO_MATCH")
 API_URL_PUT_TLE_IN_DB = os.getenv("API_URL_PUT_TLE_IN_DB")
 API_URL_PUT_NORAD_IN_DB = os.getenv("API_URL_PUT_NORAD_IN_DB")
+
+API_URL_GET_REAL_SPACETRACK_DATA = os.getenv("API_URL_GET_REAL_SPACETRACK_DATA")
 
 # API_URL_GET_NORAD = "https://spacepatrol.vercel.app/get_norad_to_elaborate"
 # API_URL_GET_TLE_TO_MATCH = "https://spacepatrol.vercel.app/get_tle_to_match"
@@ -196,4 +201,57 @@ def put_norad_code_to_db_list():
     input_data = request.json
     response = {"status": "success", "message": "NORAD codes saved to database"}
     return jsonify(response)
+
+@app.route("/real_space_track_data_wip")
+def real_space_track_data_wip():
+
+    BASE_URL = "https://www.space-track.org"
+    SESSION = requests.Session()
+
+    def login(email, password):
+        """Effettua il login a SpaceTrack."""
+        login_url = f"{BASE_URL}/ajaxauth/login"
+        payload = {
+            "identity": email,
+            "password": password
+        }
+        response = SESSION.post(login_url, data=payload)
+        if response.status_code == 200:
+            print("Login effettuato con successo.")
+        else:
+            print("Errore durante il login.")
+            response.raise_for_status()
+
+    def get_data(query):
+        """Estrae dati dalla query fornita."""
+        request_url = f"{BASE_URL}{query}"
+        response = SESSION.get(request_url)
+        if response.status_code == 200:
+            print("Dati estratti con successo.")
+            return response.json()  
+        else:
+            print("Errore durante l'estrazione dei dati.")
+            response.raise_for_status()
+
+    def logout():
+        """Effettua il logout da SpaceTrack."""
+        logout_url = f"{BASE_URL}/ajaxauth/logout"
+        response = SESSION.get(logout_url)
+        if response.status_code == 200:
+            print("Logout effettuato.")
+        else:
+            print("Errore durante il logout.")
+            response.raise_for_status()
+
+    if __name__ == "__main__":
+        email = "netxdata.it@gmail.com"
+        password = "NetxData2024!2024"
+        query = "/basicspacedata/query/class/gp/decay_date/null-val/epoch/>now-30/orderby/norad_cat_id/format/json/object_type/debris"
+        
+        try:
+            login(USR, PWD)
+            data = get_data(query)
+            print(data)  
+        finally:
+            logout()
 
