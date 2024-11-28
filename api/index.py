@@ -207,6 +207,7 @@ def real_space_track_data_wip():
 
     BASE_URL = "https://www.space-track.org"
     SESSION = requests.Session()
+    query = "/basicspacedata/query/class/gp/decay_date/null-val/epoch/>now-30/orderby/norad_cat_id/format/json/object_type/debris"
 
     def login(email, password):
         """Effettua il login a SpaceTrack."""
@@ -242,13 +243,11 @@ def real_space_track_data_wip():
         else:
             print("Errore durante il logout.")
             response.raise_for_status()
-
-        query = "/basicspacedata/query/class/gp/decay_date/null-val/epoch/>now-30/orderby/norad_cat_id/format/json/object_type/debris"
         
-        try:
-            login(USR, PWD)
-            data = get_data(query)
-            print(data)  
-        finally:
-            logout()
+    try:
+        login(USR, PWD)
+        data = get_data(query)
+        return data 
+    finally:
+        logout()
 
