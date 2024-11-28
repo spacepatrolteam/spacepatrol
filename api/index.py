@@ -247,7 +247,21 @@ def real_space_track_data_wip():
     try:
         login(USR, PWD)
         data = get_data(query)
-        return data 
+        return {
+            "status": "success",
+            "data": data
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e),
+            "details": repr(e)  # Rappresentazione dettagliata dell'errore
+        }
     finally:
-        logout()
+        try:
+            logout()
+        except Exception as logout_error:
+            # Includi il fallimento del logout nel messaggio di errore, se necessario
+            print(f"Failed to logout: {logout_error}")
+
 
