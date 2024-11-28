@@ -255,7 +255,9 @@ def real_space_track_data_wip():
         return {
             "status": "error",
             "message": str(e),
-            "details": repr(e)  # Rappresentazione dettagliata dell'errore
+            "details": repr(e),
+            "USR": repr(USR),
+            "PWD": repr(PWD),
         }
     finally:
         try:
