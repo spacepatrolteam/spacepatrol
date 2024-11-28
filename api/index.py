@@ -9,7 +9,7 @@ app = Flask(__name__)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 USR = os.getenv("USR")
-PWD = os.getenv("PWD")
+SCRT = os.getenv("SCRT")
 
 API_URL_GET_NORAD = os.getenv("API_URL_GET_NORAD")
 API_URL_GET_TLE_TO_MATCH = os.getenv("API_URL_GET_TLE_TO_MATCH")
@@ -245,7 +245,7 @@ def real_space_track_data_wip():
             response.raise_for_status()
         
     try:
-        login(USR, "NetxData2024!2024")
+        login(USR, SCRT)
         data = get_data(query)
         return {
             "status": "success",
@@ -257,7 +257,7 @@ def real_space_track_data_wip():
             "message": str(e),
             "details": repr(e),
             "USR": repr(USR),
-            "PWD": repr(PWD),
+            "SCRT": repr(SCRT),
         }
     finally:
         try:
