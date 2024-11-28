@@ -245,7 +245,7 @@ def real_space_track_data_wip():
             response.raise_for_status()
         
     try:
-        login(USR, PWD)
+        login(USR, "NetxData2024!2024")
         data = get_data(query)
         return {
             "status": "success",
