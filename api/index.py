@@ -2,6 +2,9 @@ from flask import Flask, jsonify, request
 import requests
 import psycopg2
 import os
+from sgp4.api import Satrec, jday
+from datetime import datetime, timedelta
+import numpy as np
 
 app = Flask(__name__)
 
@@ -30,7 +33,72 @@ def get_db_connection():
     except Exception as e:
         print("Errore nella connessione al database:", e)
         return None
+
+# Funzione per calcolare le posizioni a partire da un TLE
+def calculate_positions(tle, start_time, duration_minutes, step_seconds=60):
+    satellite = Satrec.twoline2rv(tle[0], tle[1])
+    positions = []
+    current_time = start_time
+
+    for i in range(0, duration_minutes * 60, step_seconds):
+        jd, fr = jday(
+            current_time.year,
+            current_time.month,
+            current_time.day,
+            current_time.hour,
+            current_time.minute,
+            current_time.second,
+        )
+        e, r, _ = satellite.sgp4(jd, fr)
+        if e == 0:  # Solo posizione valida
+            offset_seconds = (current_time - start_time).total_seconds()
+            positions.append((offset_seconds, r))
+        current_time += timedelta(seconds=step_seconds)
     
+    return positions
+
+# Funzione per gestire più TLE
+def process_tle_set(tle_set, start_time, duration_minutes, step_seconds=60):
+    positions_dict = {}
+    for satellite_id, tle in tle_set.items():
+        positions_dict[satellite_id] = calculate_positions(tle, start_time, duration_minutes, step_seconds)
+    return positions_dict
+
+# Funzione per calcolare le intersezioni
+def calculate_intersections_from_dict(positions_dict, threshold_km=1.0):
+    """
+    Calcola le intersezioni tra il NORAD principale (main_object) e i related TLE.
+    Non confronta gli oggetti related tra loro.
+    """
+    main_object_id = "main_object"
+    intersections = []
+
+    # Ottieni la traiettoria del NORAD principale
+    main_positions = positions_dict.get(main_object_id, [])
+
+    # Controlla ogni related TLE rispetto al NORAD principale
+    for satellite_id, related_positions in positions_dict.items():
+        if satellite_id == main_object_id:
+            continue  # Salta il NORAD principale stesso
+
+        for pos_main, pos_related in zip(main_positions, related_positions):
+            time_main, coord_main = pos_main
+            time_related, coord_related = pos_related
+
+            # Calcola la distanza tra il NORAD principale e l'oggetto related
+            distance = np.linalg.norm(np.array(coord_main) - np.array(coord_related))
+            if distance <= threshold_km:
+                intersections.append({
+                    "time": time_main,
+                    "sat1": main_object_id,
+                    "sat2": satellite_id,
+                    "coord1": coord_main,
+                    "coord2": coord_related,
+                    "distance": distance
+                })
+
+    return intersections
+
 # CRON
 @app.route("/calc_match")
 def calc_match():
@@ -53,55 +121,67 @@ def calc_match():
         if not tle_data.get("norad_tle"):
             return jsonify({"status": "error", "message": "No TLE data received"}), 500
 
-        norad_tle = tle_data.get("norad_tle")
-        related_tles = tle_data.get("related_tles")
+        norad_tle_resp = tle_data.get("norad_tle")
+        related_tles_resp = tle_data.get("related_tles")
 
-        # Step 3: Calcola il match
-        # matches = []
-        # for tle in related_tles:
-        #     matches.append(f"{norad_tle} and {tle}")
+        # Step 3: Costruisci il dizionario TLE per il calcolo
+        tle_set = {
+            "main_object": [
+                norad_tle_resp["tle_line1"],
+                norad_tle_resp["tle_line2"]
+            ]
+        }
+        for related_tle in related_tles_resp:
+            tle_set[related_tle["related_tle"]] = [
+                related_tle["tle_line1"],
+                related_tle["tle_line2"]
+            ]
 
-        # Step 4: Inserisce i risultati del calcolo nella tabella neon_match_history
-        conn = get_db_connection()
-        if conn is None:
-            return jsonify({"error": "Database connection failed"}), 500
+        # Step 4: Parametri della simulazione
+        start_time = "2024-11-25T00:00:00Z"  # Start time statico per ora
+        duration_minutes = 120
+        step_seconds = 60
+        threshold_km = 1.0  # Distanza di intersezione in km
 
-        try:
-            cursor = conn.cursor()
+        # Step 5: Calcolo delle traiettorie
+        positions_dict = process_tle_set(tle_set, datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%SZ"), duration_minutes, step_seconds)
 
-            # Elimina tutti i record dalla tabella neon_match_actual
-            delete_query = "DELETE FROM neon_match_actual"
-            cursor.execute(delete_query)
+        # Step 6: Calcolo delle intersezioni
+        intersections = calculate_intersections_from_dict(positions_dict, threshold_km)
 
-            # Inserisci i dati nella tabella neon_match_actual
-            insert_query_actual = """
-                INSERT INTO neon_match_actual (norad_code, tle_line1, tle_line2)
-                VALUES (%s, %s, %s)
-            """
-            cursor.execute(insert_query_actual, ("2334255334", "1 20580U 90037B   23269.63541667  .00000473  00000-0  36089-4 0  9995", "2 25544  51.6457 200.5350 0007913  32.3308  50.0150 15.50048536396073"))
+        # Optional: Inserisci i risultati nel database (attualmente commentato)
+        # conn = get_db_connection()
+        # if conn is None:
+        #     return jsonify({"error": "Database connection failed"}), 500
 
-            # Inserisci i dati nella tabella neon_match_history
-            insert_query_history = """
-                INSERT INTO neon_match_history (norad_code, tle_line1, tle_line2)
-                VALUES (%s, %s, %s)
-            """
-            cursor.execute(insert_query_history, ("2334255334", "1 20580U 90037B   23269.63541667  .00000473  00000-0  36089-4 0  9995", "2 25544  51.6457 200.5350 0007913  32.3308  50.0150 15.50048536396073"))
+        # try:
+        #     cursor = conn.cursor()
+        #     # Elimina tutti i record esistenti
+        #     cursor.execute("DELETE FROM neon_match_actual")
+        #     # Inserisci i nuovi match
+        #     insert_query = """
+        #         INSERT INTO neon_match_actual (norad_code, tle_line1, tle_line2)
+        #         VALUES (%s, %s, %s)
+        #     """
+        #     for intersect in intersections:
+        #         cursor.execute(insert_query, (
+        #             intersect["sat1"],  # Satellite 1
+        #             intersect["coord1"],  # Posizione 1
+        #             intersect["coord2"]  # Posizione 2
+        #         ))
+        #     conn.commit()
+        #     cursor.close()
+        #     conn.close()
+        # except Exception as e:
+        #     conn.rollback()
+        #     conn.close()
+        #     return jsonify({"error": f"Failed to save match history: {str(e)}"}), 500
 
-            # Commit dei cambiamenti
-            conn.commit()
-            cursor.close()
-            conn.close()
-        except Exception as e:
-            conn.rollback()
-            conn.close()
-            return jsonify({"error": f"Failed to save match history: {str(e)}"}), 500
-
-        # Restituisce una risposta di successo
-        return jsonify({"status": "success", "message": "Match data saved to database"})
-
+        # Step 7: Restituisce i risultati
+        return jsonify(intersections)
 
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
     
 @app.route("/get_norad_to_elaborate")
 def get_norad_to_elaborate():
