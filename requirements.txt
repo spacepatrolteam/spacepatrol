@@ -3,3 +3,4 @@ requests
 psycopg2-binary
 sgp4==2.22
 numpy==1.26.0
+python-dotenv  # Gestione delle variabili d'ambiente
