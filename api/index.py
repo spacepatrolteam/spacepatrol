@@ -868,11 +868,13 @@ def from_spacetrack_to_our_db():
                 "message": "Connessione al database fallita"
             }
         
-        # Elimina tutti i record esistenti
+        # Cancella i dati esistenti
         cursor = conn.cursor()
         cursor.execute("DELETE FROM tle_list")
         conn.commit()
-        cursor.close()
+
+        # Lista per accumulare i dati
+        batch_data = []
 
         # Itera sui dati ricevuti dall'API
         for tle in data:
@@ -882,16 +884,26 @@ def from_spacetrack_to_our_db():
             tle_periapsis = tle.get("PERIAPSIS")
             tle_inclination = tle.get("INCLINATION")
 
-            # Verifica che entrambe le linee siano presenti
+            # Verifica che tutte le informazioni siano presenti
             if not tle_line1 or not tle_line2 or not tle_apoapsis or not tle_periapsis or not tle_inclination:
                 logging.warning("Qualche dato del TLE mancante, salto questo TLE.")
                 continue
 
-            # Inserisci i dati nel database
-            insert_tle_data(conn, tle_line1, tle_line2, tle_apoapsis, tle_periapsis, tle_inclination)
+            # Aggiungi il record al batch
+            batch_data.append((tle_line1, tle_line2, tle_apoapsis, tle_periapsis, tle_inclination))
+
+        # Inserisci i dati in batch
+        if batch_data:
+            cursor.executemany("""
+                INSERT INTO tle_list (TLE_LINE1, TLE_LINE2, APOAPSIS, PERIAPSIS, INCLINATION)
+                VALUES (%s, %s, %s, %s, %s)
+            """, batch_data)
+            conn.commit()
 
         # Chiudi la connessione al database
+        cursor.close()
         conn.close()
+
         return {
             "status": "success",
             "message": "Dati inseriti correttamente nel database."
