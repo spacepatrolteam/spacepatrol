@@ -844,9 +844,18 @@ def insert_tle_data(conn, tle_line1, tle_line2, tle_apoapsis, tle_periapsis, tle
 @app.route("/from_spacetrack_to_our_db")
 def from_spacetrack_to_our_db():
 
+    data = request.get_json()
+    element_limit = data.get("element_limit", "")
+    if element_limit.isdigit():
+        element_limit = f"/limit/{element_limit}"
+    else:
+        element_limit = ""
+
+
+
     BASE_URL = "https://www.space-track.org"
     SESSION = requests.Session()
-    query = "/basicspacedata/query/class/gp/decay_date/null-val/epoch/>now-30/orderby/norad_cat_id/format/json/object_type/debris"
+    query = "/basicspacedata/query/class/gp/decay_date/null-val/epoch/>now-30/orderby/norad_cat_id/format/json/object_type/debris" + element_limit
 
     def login(email, password):
         """Effettua il login a SpaceTrack."""
@@ -972,7 +981,7 @@ def from_spacetrack_to_our_db():
 
         return {
             "status": "success",
-            "message": "Dati inseriti correttamente nel database."
+            "message": f"{len(batch_data)} dati inseriti correttamente nel database."
         }
     except Exception as e:
         logging.error(f"Errore durante l'inserimento dei dati nel database: {e}")
