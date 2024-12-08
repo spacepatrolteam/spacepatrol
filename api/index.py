@@ -752,87 +752,32 @@ def clean_value(value):
         # Restituisce 0.0 come valore di fallback
         return 0.0
 
-def process_tle_batch(conn, data):
-    batch_data = []
-
-    for tle in data:
-        tle_line1 = tle.get("TLE_LINE1")
-        tle_line2 = tle.get("TLE_LINE2")
-        tle_apoapsis = tle.get("APOAPSIS")
-        tle_periapsis = tle.get("PERIAPSIS")
-        tle_inclination = tle.get("INCLINATION")
-
-        # Salta i TLE incompleti
-        if not tle_line1 or not tle_line2 or not tle_apoapsis or not tle_periapsis or not tle_inclination:
-            logging.warning("Qualche dato del TLE mancante, salto questo TLE.")
-            continue
-
-        try:
-            # Estrai i dati richiesti
-            norad_cat_id = tle_line1[2:7]
-            classification = tle_line1[7:8]
-            launch_year = 1900 + int(tle_line1[9:11]) if int(tle_line1[9:11]) >= 57 else 2000 + int(tle_line1[9:11])
-            launch_number = int(tle_line1[11:14])
-            launch_piece = tle_line1[14:17].strip()
-            epoch_year = 2000 + int(tle_line1[18:20]) if int(tle_line1[18:20]) < 50 else 1900 + int(tle_line1[18:20])
-            epoch_day = clean_value(tle_line1[20:32])
-            first_derivative = clean_value(tle_line1[33:43])
-            second_derivative = clean_value(tle_line1[44:52])
-            bstar = clean_value(tle_line1[53:61])
-            ephemeris_type = int(tle_line1[62:63])
-            element_set = int(tle_line1[64:68])
-            checksum1 = int(tle_line1[68:69])
-
-            inclination = clean_value(tle_line2[8:16])
-            right_ascension = clean_value(tle_line2[17:25])
-            eccentricity = clean_value("0." + tle_line2[26:33])
-            argument_of_perigee = clean_value(tle_line2[34:42])
-            mean_anomaly = clean_value(tle_line2[43:51])
-            mean_motion = clean_value(tle_line2[52:63])
-            revolution_number = int(tle_line2[63:68])
-            checksum2 = int(tle_line2[68:69])
-
-            # Aggiungi i dati al batch
-            batch_data.append((
-                norad_cat_id, classification, launch_year, launch_number,
-                launch_piece, epoch_year, epoch_day, first_derivative, second_derivative,
-                bstar, ephemeris_type, element_set, checksum1, norad_cat_id,
-                inclination, right_ascension, eccentricity, argument_of_perigee,
-                mean_anomaly, mean_motion, revolution_number, checksum2,
-                json.dumps({"tle_line1": tle_line1, "tle_line2": tle_line2}), "{}",
-                tle_apoapsis, tle_periapsis, tle_inclination
-            ))
-        except Exception as e:
-            logging.error(f"Errore durante la preparazione del TLE: {e}")
-            continue
-
-    # Inserisci i dati nel database in batch
-    if batch_data:
-        try:
-            cursor = conn.cursor()
-            cursor.executemany("""
-                INSERT INTO tle_list (
-                    codnorad_riga1, classificazione, anno, nrlancio_anno,
-                    pezzo_lancio, annoepoca_astro, epoca_astro, derivata_prima, derivata_seconda,
-                    termine_trascinamento, tipo_effemeridi, nrset, chksum_riga1, codnorad_riga2,
-                    inclinazione, ascensione_retta, eccentricita, arg_perigeo, anomalia_media,
-                    moto_medio, nr_rivoluzioni, chksum_riga2, json, dt, extra_info,
-                    apoapsis, periapsis, inclination
-                ) VALUES (
-                    %s, %s, %s, %s,
-                    %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s, NOW(), %s,
-                    %s, %s, %s
-                )
-            """, batch_data)
-            conn.commit()
-            cursor.close()
-            print(f"Inseriti {len(batch_data)} TLE nel database.")
-        except Exception as e:
-            logging.error(f"Errore durante l'inserimento batch: {e}")
-            conn.rollback()
+def process_tle_batch(conn, batch_data):
+    try:
+        cursor = conn.cursor()
+        cursor.executemany("""
+            INSERT INTO tle_list (
+                codnorad_riga1, classificazione, anno, nrlancio_anno,
+                pezzo_lancio, annoepoca_astro, epoca_astro, derivata_prima, derivata_seconda,
+                termine_trascinamento, tipo_effemeridi, nrset, chksum_riga1, codnorad_riga2,
+                inclinazione, ascensione_retta, eccentricita, arg_perigeo, anomalia_media,
+                moto_medio, nr_rivoluzioni, chksum_riga2, json, dt, extra_info,
+                apoapsis, periapsis, inclination
+            ) VALUES (
+                %s, %s, %s, %s,
+                %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, NOW(), %s,
+                %s, %s, %s
+            )
+        """, batch_data)  # Inserisci il batch di tuple
+        conn.commit()
+        cursor.close()
+        print(f"Inseriti {len(batch_data)} TLE nel database.")
+    except Exception as e:
+        logging.error(f"Errore durante l'inserimento batch: {e}")
+        conn.rollback()
 
 def insert_tle_data(conn, tle_line1, tle_line2, tle_apoapsis, tle_periapsis, tle_inclination):
     try:
@@ -967,7 +912,6 @@ def from_spacetrack_to_our_db():
         # Lista per raccogliere i dati
         batch_data = []
 
-        # Itera sui dati ricevuti dall'API
         for tle in data:
             tle_line1 = tle.get("TLE_LINE1")
             tle_line2 = tle.get("TLE_LINE2")
@@ -975,13 +919,12 @@ def from_spacetrack_to_our_db():
             tle_periapsis = tle.get("PERIAPSIS")
             tle_inclination = tle.get("INCLINATION")
 
-            # Verifica che entrambe le linee siano presenti
             if not tle_line1 or not tle_line2 or not tle_apoapsis or not tle_periapsis or not tle_inclination:
                 logging.warning("Qualche dato del TLE mancante, salto questo TLE.")
                 continue
 
             try:
-                # Estrai i dati necessari e aggiungili alla lista
+                # Aggiungi i dati al batch (in formato tuple)
                 norad_cat_id = tle_line1[2:7]
                 classification = tle_line1[7:8]
                 launch_year = 1900 + int(tle_line1[9:11]) if int(tle_line1[9:11]) >= 57 else 2000 + int(tle_line1[9:11])
@@ -1005,7 +948,7 @@ def from_spacetrack_to_our_db():
                 revolution_number = int(tle_line2[63:68])
                 checksum2 = int(tle_line2[68:69])
 
-                # Aggiungi i dati al batch
+                # Aggiungi tuple al batch
                 batch_data.append((
                     norad_cat_id, classification, launch_year, launch_number,
                     launch_piece, epoch_year, epoch_day, first_derivative, second_derivative,
@@ -1019,9 +962,10 @@ def from_spacetrack_to_our_db():
                 logging.error(f"Errore durante la preparazione del TLE: {e}")
                 continue
 
-        # Inserisci i dati nel database in batch
+        # Chiamata a process_tle_batch
         if batch_data:
             process_tle_batch(conn, batch_data)
+
 
         # Chiudi la connessione al database
         conn.close()
