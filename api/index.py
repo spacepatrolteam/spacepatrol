@@ -901,9 +901,7 @@ def from_spacetrack_to_our_db():
         return {
             "status": "error",
             "message": str(e),
-            "details": repr(e),
-            "info_1": f"USR_SPACETRACK: {USR_SPACETRACK}",
-            "info_2": f"SCRT_SPACETRACK: {SCRT_SPACETRACK}"
+            "details": repr(e)
         }
     finally:
         try:
