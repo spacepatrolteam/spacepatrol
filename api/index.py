@@ -470,6 +470,7 @@ def update_match_actual(intersections):
     if conn is None:
         raise Exception("Database connection failed")
 
+
     try:
         cursor = conn.cursor()
         # Elimina tutti i record esistenti
