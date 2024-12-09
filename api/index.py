@@ -236,6 +236,7 @@ def update_web_tle_in_db():
     if conn is None:
         return jsonify({"error": "Database connection failed"}), 500
 
+
     try:
         cursor = conn.cursor()
         for tle in tle_data:
