@@ -693,8 +693,8 @@ def create_czml_api():
         logger.error("Error in /create_czml API: %s", e)
         return jsonify({"status": "error", "message": str(e)}), 500
 
-@app.route("/calculate_matches", methods=["GET"])
-def calculate_matches_api():
+@app.route("/calculate_intersections", methods=["GET"])
+def calculate_intersections_api():
     # {
     #     "start_time": "2024-11-25T00:00:00Z",
     #     "duration_minutes": 120,
