@@ -533,8 +533,14 @@ def update_match_history(intersections):
         conn.close()
         raise Exception(f"Failed to append to match_history: {str(e)}")
 
+
 @app.route("/register_new_norad", methods=["PUT"])
 def register_new_norad():
+    # {
+    #     "norad_code": 42661,
+    #     "subscription_level": 1,
+    #     "priority_level": 1
+    # }
     """
     Aggiunge un nuovo record alla tabella norad_list.
     """
@@ -580,6 +586,10 @@ def register_new_norad():
 
 @app.route("/delete_norad", methods=["DELETE"])
 def delete_norad():
+    # {
+    #     "norad_code": "666"
+    # }
+
     """
     Elimina un record dalla tabella norad_list in base al norad_code.
     """
@@ -844,7 +854,9 @@ def insert_tle_data(conn, tle_line1, tle_line2, tle_apoapsis, tle_periapsis, tle
 
 @app.route("/from_spacetrack_to_our_db")
 def from_spacetrack_to_our_db():
-
+    # {
+    #     "element_limit": "10"
+    # }
     data = request.get_json()
     element_limit = data.get("element_limit", "")
     if element_limit.isdigit():
