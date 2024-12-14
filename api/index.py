@@ -54,8 +54,8 @@ if app.config["DEBUG"]:
 
 
 # Endpoint di sistema da CANCELLARE
-@app.route("/config", methods=["GET"])
-def config():
+@app.route("/__get_config", methods=["GET"])
+def get_config():
     """
     Endpoint per visualizzare le configurazioni attive del sistema.
     Determina automaticamente se ci si trova in ambiente di sviluppo (locale) o produzione.
@@ -81,6 +81,104 @@ def config():
     except Exception as e:
         logger.error(f"Error retrieving configuration: {e}")
         return jsonify({"status": "error", "message": "Unable to retrieve configuration"}), 500
+# Endpoint di sistema da CANCELLARE
+@app.route("/__get_customers", methods=["GET"])
+def get_customers():
+    """
+    Visualizza i customers
+    """
+    conn = get_db_connection()
+    if conn is None:
+        raise Exception("Database connection failed")
+
+    try:
+        cursor = conn.cursor()
+        query = "SELECT * FROM norad_list ORDER BY id ASC"
+        cursor.execute(query)
+        customers = cursor.fetchall()  
+
+        return jsonify(customers), 200
+    
+    except Exception as e:
+        conn.rollback()
+        raise Exception(f"Failed to get customers from norad_list table: {str(e)}")
+
+    finally:
+        cursor.close()
+        conn.close()
+# Endpoint di sistema da CANCELLARE
+@app.route("/__get_tle_list", methods=["GET"])
+def get_tle_list():
+    """
+    Visualizza i tle
+    """
+    conn = get_db_connection()
+    if conn is None:
+        raise Exception("Database connection failed")
+
+    try:
+        cursor = conn.cursor()
+        query = "SELECT * FROM tle_list ORDER BY idcounter ASC"
+        cursor.execute(query)
+        tle = cursor.fetchall()  
+
+        return jsonify(tle), 200
+    
+    except Exception as e:
+        conn.rollback()
+        raise Exception(f"Failed to get customers from tle_list table: {str(e)}")
+
+    finally:
+        cursor.close()
+        conn.close()
+@app.route("/__get_match_history", methods=["GET"])
+def get_match_history():
+    """
+    Visualizza i match_history
+    """
+    conn = get_db_connection()
+    if conn is None:
+        raise Exception("Database connection failed")
+
+    try:
+        cursor = conn.cursor()
+        query = "SELECT * FROM match_history ORDER BY id ASC"
+        cursor.execute(query)
+        match_history = cursor.fetchall()  
+
+        return jsonify(match_history), 200
+    
+    except Exception as e:
+        conn.rollback()
+        raise Exception(f"Failed to get match_history from tle_list table: {str(e)}")
+
+    finally:
+        cursor.close()
+        conn.close()
+@app.route("/__get_match_actual", methods=["GET"])
+def get_match_actual():
+    """
+    Visualizza i match_actual
+    """
+    conn = get_db_connection()
+    if conn is None:
+        raise Exception("Database connection failed")
+
+    try:
+        cursor = conn.cursor()
+        query = "SELECT * FROM match_actual ORDER BY id ASC"
+        cursor.execute(query)
+        match_actual = cursor.fetchall()  
+
+        return jsonify(match_actual), 200
+    
+    except Exception as e:
+        conn.rollback()
+        raise Exception(f"Failed to get customers from match_actual table: {str(e)}")
+
+    finally:
+        cursor.close()
+        conn.close()
 
 
 # ****************************************************************************************
@@ -137,7 +235,7 @@ def get_main_object(space_track_data, norad_cat_id):
         # Cerca il record corrispondente nel TLE_DATA_ARRAY
         for obj in space_track_data:
             # Cambia l'accesso da chiave stringa a posizione
-            if str(obj[1]) == norad_cat_id:  # 4 è la posizione che contiene NORAD_CAT_ID
+            if obj[1] == int(norad_cat_id):
                 logger.info(f"Main object found for NORAD_CAT_ID {norad_cat_id}")
                 tl1 = obj[23]["tle_line1"]
                 tl2 = obj[23]["tle_line2"]
@@ -417,6 +515,15 @@ def calculate_intersections(tle_positions, threshold_km=5000.0):
     return intersections
 
 def create_czml(tle_positions, epoch, intersections=None):
+    # {
+    #     "start_time": "2024-11-25T00:00:00Z",
+    #     "duration_minutes": 120,
+    #     "step_seconds": 1800,
+    #     "min_or_equal_apoapsis_km_value": 100,
+    #     "min_or_equal_periapsis_km_value": 100,
+    #     "min_or_equal_inclination_degrees_value": 1,
+    #     "threshold": 5000
+    # }
     czml = [
         {
             "id": "document",
@@ -470,34 +577,50 @@ def update_match_actual(intersections):
     if conn is None:
         raise Exception("Database connection failed")
 
-
     try:
         cursor = conn.cursor()
+
         # Elimina tutti i record esistenti
         cursor.execute("DELETE FROM match_actual")
 
-        # Inserisci i nuovi match
-        insert_query = """
-            INSERT INTO match_actual (sat1, sat2, distance, time, coord1, coord2)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """
-        for intersect in intersections:
-            cursor.execute(insert_query, (
-                intersect["sat1"],
-                intersect["sat2"],
-                intersect["distance"],
-                intersect["time"],
-                json.dumps(intersect["coord1"]),  # Serializza le coordinate in JSON
-                json.dumps(intersect["coord2"])   # Serializza le coordinate in JSON
-            ))
+        # Query per inserire i dati (tutta su una riga)
+        insert_query = "INSERT INTO match_actual (time, sat1, sat2, coord1, coord2, distance) VALUES (%s, %s, %s, %s, %s, %s)"
 
+        # Funzione per normalizzare i valori
+        def normalize_value(value):
+            if isinstance(value, (np.float64, np.float32)):  # Converte NumPy float in float
+                return float(value)
+            elif isinstance(value, (np.int64, np.int32)):  # Converte NumPy int in int
+                return int(value)
+            elif isinstance(value, (list, tuple)):  # Converte liste o tuple in stringhe
+                return str(value)
+            return value  # Restituisce il valore se già compatibile
+
+        # Inserisci i nuovi dati
+        for intersect in intersections:
+            # Normalizza tutti i dati
+            time = normalize_value(intersect["time"])
+            sat1 = normalize_value(intersect["sat1"])
+            sat2 = normalize_value(intersect["sat2"])
+            coord1 = normalize_value(intersect["coord1"])
+            coord2 = normalize_value(intersect["coord2"])
+            distance = normalize_value(intersect["distance"])
+
+            # Debugging: Stampa la query SQL completa per verifica
+            print(cursor.mogrify(insert_query, (time, sat1, sat2, coord1, coord2, distance)))
+
+            # Esegui la query
+            cursor.execute(insert_query, (time, sat1, sat2, coord1, coord2, distance))
+
+        # Conferma le modifiche
         conn.commit()
-        cursor.close()
-        conn.close()
     except Exception as e:
         conn.rollback()
-        conn.close()
         raise Exception(f"Failed to update match_actual: {str(e)}")
+    finally:
+        cursor.close()
+        conn.close()
+
 
 def update_match_history(intersections):
     """
@@ -510,28 +633,43 @@ def update_match_history(intersections):
     try:
         cursor = conn.cursor()
 
-        # Inserisci i nuovi match
-        insert_query = """
-            INSERT INTO match_history (sat1, sat2, distance, time, coord1, coord2)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """
-        for intersect in intersections:
-            cursor.execute(insert_query, (
-                intersect["sat1"],
-                intersect["sat2"],
-                intersect["distance"],
-                intersect["time"],
-                json.dumps(intersect["coord1"]),  # Serializza le coordinate in JSON
-                json.dumps(intersect["coord2"])   # Serializza le coordinate in JSON
-            ))
+        # Query per inserire i dati (tutta su una riga)
+        insert_query = "INSERT INTO match_history (sat1, sat2, distance, time, coord1, coord2) VALUES (%s, %s, %s, %s, %s, %s)"
 
+        # Funzione per normalizzare i valori
+        def normalize_value(value):
+            if isinstance(value, (np.float64, np.float32)):  # Converte NumPy float in float
+                return float(value)
+            elif isinstance(value, (np.int64, np.int32)):  # Converte NumPy int in int
+                return int(value)
+            elif isinstance(value, (list, tuple)):  # Converte liste o tuple in stringhe
+                return str(value)
+            return value  # Restituisce il valore se già compatibile
+
+        # Inserisci i nuovi dati
+        for intersect in intersections:
+            # Normalizza tutti i dati
+            sat1 = normalize_value(intersect["sat1"])
+            sat2 = normalize_value(intersect["sat2"])
+            distance = normalize_value(intersect["distance"])
+            time = normalize_value(intersect["time"])
+            coord1 = normalize_value(intersect["coord1"])
+            coord2 = normalize_value(intersect["coord2"])
+
+            # Debugging: Stampa la query SQL completa per verifica
+            print(cursor.mogrify(insert_query, (sat1, sat2, distance, time, coord1, coord2)))
+
+            # Esegui la query
+            cursor.execute(insert_query, (sat1, sat2, distance, time, coord1, coord2))
+
+        # Conferma le modifiche
         conn.commit()
-        cursor.close()
-        conn.close()
     except Exception as e:
         conn.rollback()
-        conn.close()
         raise Exception(f"Failed to append to match_history: {str(e)}")
+    finally:
+        cursor.close()
+        conn.close()
 
 
 @app.route("/register_new_norad", methods=["PUT"])
@@ -702,7 +840,8 @@ def calculate_intersections_api():
     #     "min_or_equal_apoapsis_km_value": 100,
     #     "min_or_equal_periapsis_km_value": 100,
     #     "min_or_equal_inclination_degrees_value": 1,
-    #     "threshold": 5000
+    #     "threshold": 5000,
+    #     "force_match_for_customers_record_id": 5
     # }
     """Calcola le intersezioni tra il NORAD principale e altri satelliti."""
     try:        
@@ -719,7 +858,13 @@ def calculate_intersections_api():
         min_or_equal_periapsis_km_value = data.get("min_or_equal_periapsis_km_value", 100)
         min_or_equal_inclination_degrees_value = data.get("min_or_equal_inclination_degrees_value", 1)
         threshold_km = data.get("threshold", 5000.0)
-    
+        force_match_for_customers_record_id = data.get("force_match_for_customers_record_id")
+
+        if force_match_for_customers_record_id:
+            customer_id_to_search = force_match_for_customers_record_id
+        else: 
+            customer_id_to_search = 0
+            
         if not start_time:
             return jsonify({"status": "error", "message": "Missing required parameter: start_time"}), 400
         
@@ -728,8 +873,8 @@ def calculate_intersections_api():
         except ValueError as e:
             logger.error(f"Invalid start_time format: {start_time}. Error: {e}")
             return jsonify({"status": "error", "message": "Invalid start_time format. Expected ISO 8601."}), 400
-                
-        norad_cat_id_to_check = get_norad_code_from_db(conn, record_id=0)
+        
+        norad_cat_id_to_check = get_norad_code_from_db(conn, record_id=customer_id_to_search)
 
         tle_engaged = retrieve_tle_engaged(min_or_equal_apoapsis_km_value, min_or_equal_periapsis_km_value, min_or_equal_inclination_degrees_value, norad_cat_id_to_check)
         tle_positions = from_tle_to_positions(tle_engaged, start_time, duration_minutes, step_seconds)
@@ -737,11 +882,13 @@ def calculate_intersections_api():
         intersections = calculate_intersections(tle_positions, threshold_km)
 
         # Aggiorna i database solo in produzione
-        if app.config["ENV"] == "production":
-            update_match_actual(intersections)
-            update_match_history(intersections)
-        else:
-            logger.info("Bypass database update in debug mode")
+        #if app.config["ENV"] == "production":
+        
+        update_match_actual(intersections)
+        update_match_history(intersections)
+        
+        # else:
+        #     logger.info("Bypass database update in debug mode")
 
         return jsonify({"status": "success", "intersections_numbers": len(intersections), "intersections": intersections})
     except Exception as e:
@@ -763,32 +910,87 @@ def clean_value(value):
         # Restituisce 0.0 come valore di fallback
         return 0.0
 
-def process_tle_batch(conn, batch_data):
-    try:
-        cursor = conn.cursor()
-        cursor.executemany("""
-            INSERT INTO tle_list (
-                codnorad_riga1, classificazione, anno, nrlancio_anno,
-                pezzo_lancio, annoepoca_astro, epoca_astro, derivata_prima, derivata_seconda,
-                termine_trascinamento, tipo_effemeridi, nrset, chksum_riga1, codnorad_riga2,
-                inclinazione, ascensione_retta, eccentricita, arg_perigeo, anomalia_media,
-                moto_medio, nr_rivoluzioni, chksum_riga2, json, dt, extra_info,
-                apoapsis, periapsis, inclination
-            ) VALUES (
-                %s, %s, %s, %s,
-                %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, NOW(), %s,
-                %s, %s, %s
-            )
-        """, batch_data)  # Inserisci il batch di tuple
-        conn.commit()
-        cursor.close()
-        print(f"Inseriti {len(batch_data)} TLE nel database.")
-    except Exception as e:
-        logging.error(f"Errore durante l'inserimento batch: {e}")
-        conn.rollback()
+def process_tle_batch(conn, data):
+    batch_data = []
+
+    for tle in data:
+        tle_line1 = tle.get("TLE_LINE1")
+        tle_line2 = tle.get("TLE_LINE2")
+        tle_apoapsis = tle.get("APOAPSIS")
+        tle_periapsis = tle.get("PERIAPSIS")
+        tle_inclination = tle.get("INCLINATION")
+
+        # Salta i TLE incompleti
+        if not tle_line1 or not tle_line2 or not tle_apoapsis or not tle_periapsis or not tle_inclination:
+            logging.warning("Qualche dato del TLE mancante, salto questo TLE.")
+            continue
+
+        try:
+            # Estrai i dati richiesti
+            norad_cat_id = tle_line1[2:7]
+            classification = tle_line1[7:8]
+            launch_year = 1900 + int(tle_line1[9:11]) if int(tle_line1[9:11]) >= 57 else 2000 + int(tle_line1[9:11])
+            launch_number = int(tle_line1[11:14])
+            launch_piece = tle_line1[14:17].strip()
+            epoch_year = 2000 + int(tle_line1[18:20]) if int(tle_line1[18:20]) < 50 else 1900 + int(tle_line1[18:20])
+            epoch_day = clean_value(tle_line1[20:32])
+            first_derivative = clean_value(tle_line1[33:43])
+            second_derivative = clean_value(tle_line1[44:52])
+            bstar = clean_value(tle_line1[53:61])
+            ephemeris_type = int(tle_line1[62:63])
+            element_set = int(tle_line1[64:68])
+            checksum1 = int(tle_line1[68:69])
+
+            inclination = clean_value(tle_line2[8:16])
+            right_ascension = clean_value(tle_line2[17:25])
+            eccentricity = clean_value("0." + tle_line2[26:33])
+            argument_of_perigee = clean_value(tle_line2[34:42])
+            mean_anomaly = clean_value(tle_line2[43:51])
+            mean_motion = clean_value(tle_line2[52:63])
+            revolution_number = int(tle_line2[63:68])
+            checksum2 = int(tle_line2[68:69])
+
+            # Aggiungi i dati al batch
+            batch_data.append((
+                norad_cat_id, classification, launch_year, launch_number,
+                launch_piece, epoch_year, epoch_day, first_derivative, second_derivative,
+                bstar, ephemeris_type, element_set, checksum1, norad_cat_id,
+                inclination, right_ascension, eccentricity, argument_of_perigee,
+                mean_anomaly, mean_motion, revolution_number, checksum2,
+                json.dumps({"tle_line1": tle_line1, "tle_line2": tle_line2}), "{}",
+                tle_apoapsis, tle_periapsis, tle_inclination
+            ))
+        except Exception as e:
+            logging.error(f"Errore durante la preparazione del TLE: {e}")
+            continue
+
+    # Inserisci i dati nel database in batch
+    if batch_data:
+        try:
+            cursor = conn.cursor()
+            cursor.executemany("""
+                INSERT INTO tle_list (
+                    codnorad_riga1, classificazione, anno, nrlancio_anno,
+                    pezzo_lancio, annoepoca_astro, epoca_astro, derivata_prima, derivata_seconda,
+                    termine_trascinamento, tipo_effemeridi, nrset, chksum_riga1, codnorad_riga2,
+                    inclinazione, ascensione_retta, eccentricita, arg_perigeo, anomalia_media,
+                    moto_medio, nr_rivoluzioni, chksum_riga2, json, dt, extra_info,
+                    apoapsis, periapsis, inclination
+                ) VALUES (
+                    %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, NOW(), %s,
+                    %s, %s, %s
+                )
+            """, batch_data)
+            conn.commit()
+            cursor.close()
+            print(f"Inseriti {len(batch_data)} TLE nel database.")
+        except Exception as e:
+            logging.error(f"Errore durante l'inserimento batch: {e}")
+            conn.rollback()
 
 def insert_tle_data(conn, tle_line1, tle_line2, tle_apoapsis, tle_periapsis, tle_inclination):
     try:
@@ -855,20 +1057,20 @@ def insert_tle_data(conn, tle_line1, tle_line2, tle_apoapsis, tle_periapsis, tle
 @app.route("/from_spacetrack_to_our_db")
 def from_spacetrack_to_our_db():
     # {
-    #     "element_limit": "10"
+    #     "limit_number_or_null": null
     # }
+
     data = request.get_json()
-    element_limit = data.get("element_limit", "")
-    if element_limit.isdigit():
-        element_limit = f"/limit/{element_limit}"
+    limit_number_or_null = data.get("limit_number_or_null", None)
+
+    if limit_number_or_null == None:
+        limit_number_or_null = ""
     else:
-        element_limit = ""
-
-
+        limit_number_or_null = f"/limit/{limit_number_or_null}"
 
     BASE_URL = "https://www.space-track.org"
     SESSION = requests.Session()
-    query = "/basicspacedata/query/class/gp/decay_date/null-val/epoch/>now-30/orderby/norad_cat_id/format/json/object_type/debris" + element_limit
+    query = f"/basicspacedata/query/class/gp/decay_date/null-val/epoch/>now-30/orderby/norad_cat_id/format/json/object_type/debris{limit_number_or_null}"
 
     def login(email, password):
         """Effettua il login a SpaceTrack."""
@@ -917,23 +1119,13 @@ def from_spacetrack_to_our_db():
                 "message": "Connessione al database fallita"
             }
         
-        # Connessione al database
-        conn = get_db_connection()
-        if conn is None:
-            return {
-                "status": "error",
-                "message": "Connessione al database fallita"
-            }
-
         # Elimina tutti i record esistenti
         cursor = conn.cursor()
         cursor.execute("DELETE FROM tle_list")
         conn.commit()
         cursor.close()
 
-        # Lista per raccogliere i dati
-        batch_data = []
-
+        # Itera sui dati ricevuti dall'API
         for tle in data:
             tle_line1 = tle.get("TLE_LINE1")
             tle_line2 = tle.get("TLE_LINE2")
@@ -941,60 +1133,19 @@ def from_spacetrack_to_our_db():
             tle_periapsis = tle.get("PERIAPSIS")
             tle_inclination = tle.get("INCLINATION")
 
+            # Verifica che entrambe le linee siano presenti
             if not tle_line1 or not tle_line2 or not tle_apoapsis or not tle_periapsis or not tle_inclination:
                 logging.warning("Qualche dato del TLE mancante, salto questo TLE.")
                 continue
 
-            try:
-                # Aggiungi i dati al batch (in formato tuple)
-                norad_cat_id = tle_line1[2:7]
-                classification = tle_line1[7:8]
-                launch_year = 1900 + int(tle_line1[9:11]) if int(tle_line1[9:11]) >= 57 else 2000 + int(tle_line1[9:11])
-                launch_number = int(tle_line1[11:14])
-                launch_piece = tle_line1[14:17].strip()
-                epoch_year = 2000 + int(tle_line1[18:20]) if int(tle_line1[18:20]) < 50 else 1900 + int(tle_line1[18:20])
-                epoch_day = clean_value(tle_line1[20:32])
-                first_derivative = clean_value(tle_line1[33:43])
-                second_derivative = clean_value(tle_line1[44:52])
-                bstar = clean_value(tle_line1[53:61])
-                ephemeris_type = int(tle_line1[62:63])
-                element_set = int(tle_line1[64:68])
-                checksum1 = int(tle_line1[68:69])
-
-                inclination = clean_value(tle_line2[8:16])
-                right_ascension = clean_value(tle_line2[17:25])
-                eccentricity = clean_value("0." + tle_line2[26:33])
-                argument_of_perigee = clean_value(tle_line2[34:42])
-                mean_anomaly = clean_value(tle_line2[43:51])
-                mean_motion = clean_value(tle_line2[52:63])
-                revolution_number = int(tle_line2[63:68])
-                checksum2 = int(tle_line2[68:69])
-
-                # Aggiungi tuple al batch
-                batch_data.append((
-                    norad_cat_id, classification, launch_year, launch_number,
-                    launch_piece, epoch_year, epoch_day, first_derivative, second_derivative,
-                    bstar, ephemeris_type, element_set, checksum1, norad_cat_id,
-                    inclination, right_ascension, eccentricity, argument_of_perigee,
-                    mean_anomaly, mean_motion, revolution_number, checksum2,
-                    json.dumps({"tle_line1": tle_line1, "tle_line2": tle_line2}), "{}",
-                    tle_apoapsis, tle_periapsis, tle_inclination
-                ))
-            except Exception as e:
-                logging.error(f"Errore durante la preparazione del TLE: {e}")
-                continue
-
-        # Chiamata a process_tle_batch
-        if batch_data:
-            process_tle_batch(conn, batch_data)
-
+            # Inserisci i dati nel database
+            insert_tle_data(conn, tle_line1, tle_line2, tle_apoapsis, tle_periapsis, tle_inclination)
 
         # Chiudi la connessione al database
         conn.close()
-
         return {
             "status": "success",
-            "message": f"{len(batch_data)} dati inseriti correttamente nel database."
+            "message": "Dati inseriti correttamente nel database."
         }
     except Exception as e:
         logging.error(f"Errore durante l'inserimento dei dati nel database: {e}")
@@ -1053,4 +1204,4 @@ def get_norad_code_from_db(conn, record_id):
 # ****************************************************************************************
 
 if __name__ == "__main__":
-    app.run(debug=app.config["DEBUG"])
+    app.run(debug=app.config["DEBUG"])  
